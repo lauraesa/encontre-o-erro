@@ -317,6 +317,8 @@
     }
     .btn.primary{background:var(--primary);color:white}
     .btn.warn{background:#fff0d7;color:#805310}
+    .btn.next{background:var(--good);color:white;animation:pop .35s ease-out}
+    @keyframes pop{0%{transform:scale(.85);opacity:0}100%{transform:scale(1);opacity:1}}
     .btn:disabled{opacity:.45;cursor:not-allowed}
     .range-wrap{display:flex;align-items:center;gap:8px;padding:7px 10px;color:var(--muted);font-size:.83rem}
     input[type="range"]{width:110px}
@@ -492,6 +494,7 @@
     <div class="controls">
       <button id="testBtn" class="btn primary">▶ Testar</button>
       <button id="hintBtn" class="btn warn">💡 Dica</button>
+      <button id="nextBtn" class="btn next hidden">Próxima fase →</button>
       <button id="resetBtn" class="btn">↺ Reiniciar fase</button>
       <div class="range-wrap">
         <span>Velocidade</span>
@@ -673,6 +676,7 @@
     testBtn: document.getElementById("testBtn"),
     hintBtn: document.getElementById("hintBtn"),
     resetBtn: document.getElementById("resetBtn"),
+    nextBtn: document.getElementById("nextBtn"),
     speed: document.getElementById("speed")
   };
 
@@ -786,6 +790,7 @@
     els.phaseObjective.textContent = p.objective;
     els.hintBox.textContent = "💡 " + p.hint;
     els.hintBox.classList.add("hidden");
+    els.nextBtn.classList.add("hidden");
     els.unusedSection.classList.toggle("hidden", !p.unused);
     els.activeList.innerHTML = "";
     els.unusedList.innerHTML = "";
@@ -859,6 +864,7 @@
     els.testBtn.disabled = true;
     els.resetBtn.disabled = true;
     els.phaseSelect.disabled = true;
+    els.nextBtn.classList.add("hidden");
 
     const p = phases[current];
     const blocks = activeBlocks();
@@ -1049,6 +1055,8 @@
       log("Resultado correto. Algoritmo concluído!","log-good");
       completed.add(p.id);
       saveCompleted();
+      els.nextBtn.textContent = current < phases.length - 1 ? "Próxima fase →" : "🏆 Voltar à fase 1";
+      els.nextBtn.classList.remove("hidden");
     }else{
       let natural = "";
       if(shownValues.length){
@@ -1169,6 +1177,12 @@
   els.testBtn.addEventListener("click",execute);
   els.hintBtn.addEventListener("click",()=>els.hintBox.classList.toggle("hidden"));
   els.resetBtn.addEventListener("click",renderPhase);
+  els.nextBtn.addEventListener("click",()=>{
+    current = (current + 1) % phases.length;
+    els.phaseSelect.value = String(current);
+    renderPhase();
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
 
   renderPhase();
 })();
