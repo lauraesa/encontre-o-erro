@@ -1,0 +1,1159 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#2f356b" />
+  <title>A evolução do algoritmo — Encontre o erro</title>
+  <style>
+    :root{
+      --bg:#f6f4ff;
+      --panel:#ffffff;
+      --ink:#20223a;
+      --muted:#6e7191;
+      --primary:#5b5fc7;
+      --primary-2:#7c82f3;
+      --accent:#ffb454;
+      --good:#1f9d6a;
+      --bad:#d94f70;
+      --line:#e4e2f2;
+      --code:#191b2b;
+      --code-ink:#eef0ff;
+      --shadow:0 12px 30px rgba(36,37,73,.11);
+      --radius:18px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;background:var(--bg);color:var(--ink)}
+    button,select,input{font:inherit}
+    button{cursor:pointer}
+    .hidden{display:none!important}
+
+    .app{
+      width:min(1500px,100%);
+      margin:0 auto;
+      padding:16px;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      background:rgba(255,255,255,.92);
+      border:1px solid var(--line);
+      box-shadow:var(--shadow);
+      border-radius:20px;
+      padding:12px 14px;
+      position:sticky;
+      top:8px;
+      z-index:20;
+      backdrop-filter:blur(12px);
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:220px;
+      flex:1;
+    }
+
+    .brand-badge{
+      width:42px;height:42px;border-radius:13px;
+      display:grid;place-items:center;
+      color:white;font-weight:900;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+    }
+
+    .brand-title{font-weight:900;line-height:1.05}
+    .brand-sub{font-size:.78rem;color:var(--muted);margin-top:4px}
+
+    .phase-picker{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    select,.range-wrap{
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--ink);
+      border-radius:12px;
+      padding:9px 10px;
+    }
+
+    .score{
+      background:#f1efff;
+      border:1px solid #ddd9ff;
+      color:#403f88;
+      padding:9px 12px;
+      border-radius:12px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .hero{
+      margin:18px 0 14px;
+      padding:18px 20px;
+      background:linear-gradient(135deg,#2f356b,#5b5fc7);
+      color:white;
+      border-radius:22px;
+      box-shadow:var(--shadow);
+    }
+    .hero h1{margin:0 0 6px;font-size:clamp(1.25rem,2.8vw,2rem)}
+    .hero p{margin:0;opacity:.92}
+    .objective{margin-top:12px;padding:12px 14px;background:rgba(255,255,255,.12);border-radius:14px}
+
+    .grid{
+      display:grid;
+      grid-template-columns:minmax(280px,1fr) minmax(300px,1.05fr) minmax(300px,1fr);
+      gap:14px;
+      align-items:stretch;
+    }
+
+    .panel{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      min-height:540px;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .panel-head{
+      padding:14px 16px 10px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:8px;
+    }
+    .panel-head h2{font-size:1rem;margin:0}
+    .panel-head small{color:var(--muted)}
+
+    .panel-body{padding:14px;flex:1;min-height:0}
+
+    .drop-title{
+      display:flex;justify-content:space-between;gap:8px;align-items:center;
+      font-size:.82rem;color:var(--muted);font-weight:800;margin:2px 0 8px;
+      text-transform:uppercase;letter-spacing:.05em;
+    }
+
+    .block-list{
+      display:flex;
+      flex-direction:column;
+      gap:9px;
+      min-height:170px;
+      padding:10px;
+      border:2px dashed #d9d6ec;
+      border-radius:14px;
+      background:#fbfaff;
+      touch-action:none;
+      transition:.16s ease;
+    }
+
+    .block-list.drag-over{border-color:var(--primary);background:#f0efff}
+    .unused-list{min-height:72px;background:#fffaf2;border-color:#f0d4aa}
+    .unused-list .empty-note,.block-list .empty-note{color:#aaa3b8;font-size:.85rem;text-align:center;padding:10px}
+
+    .block{
+      position:relative;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-height:52px;
+      padding:10px 12px;
+      border:1px solid #d8d6ea;
+      border-radius:13px;
+      background:white;
+      box-shadow:0 4px 10px rgba(30,33,65,.07);
+      user-select:none;
+      touch-action:none;
+      transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+    }
+    .block::before{
+      content:"⋮⋮";
+      color:#9894ad;
+      font-weight:900;
+      letter-spacing:-2px;
+    }
+    .block .num{
+      width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+      background:#efedff;color:#4d50a9;font-weight:900;font-size:.82rem;flex:0 0 auto;
+    }
+    .block .label{font-weight:800;line-height:1.2}
+    .block .mini{font-size:.76rem;color:var(--muted);margin-top:3px}
+    .block.dragging{
+      opacity:.35;
+      transform:scale(.98);
+      box-shadow:none;
+    }
+    .ghost{
+      position:fixed;
+      z-index:9999;
+      pointer-events:none;
+      opacity:.92;
+      transform:rotate(1.5deg) scale(1.02);
+      width:min(360px,78vw);
+    }
+    .placeholder{
+      border:2px dashed var(--primary-2);
+      background:#eeedff;
+      min-height:54px;
+      border-radius:13px;
+    }
+
+    .tip{
+      margin-top:12px;
+      padding:11px 12px;
+      border-radius:12px;
+      background:#fff6e9;
+      color:#745121;
+      border:1px solid #f1d6ad;
+      font-size:.9rem;
+    }
+
+    .code-wrap{
+      background:var(--code);
+      color:var(--code-ink);
+      border-radius:14px;
+      overflow:auto;
+      min-height:420px;
+      max-height:66vh;
+      border:1px solid #292c44;
+    }
+    .code-line{
+      display:grid;
+      grid-template-columns:38px 1fr;
+      gap:10px;
+      padding:6px 12px 6px 8px;
+      min-height:31px;
+      align-items:start;
+      transition:.18s ease;
+      border-left:4px solid transparent;
+    }
+    .code-line.current{
+      background:#303557;
+      border-left-color:var(--accent);
+    }
+    .line-no{color:#737997;text-align:right;user-select:none}
+    code{white-space:pre-wrap;word-break:break-word}
+    .kw{color:#cf9cff;font-weight:800}
+    .fn{color:#7fd8ff}
+    .str{color:#ffcb8b}
+    .numlit{color:#9ce6b2}
+    .com{color:#8990ad;font-style:italic}
+    .var{color:#f2f4ff}
+
+    .machine{
+      display:grid;
+      grid-template-rows:auto auto 1fr;
+      gap:12px;
+      height:100%;
+    }
+
+    .status-card{
+      padding:13px 14px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fafaff;
+    }
+    .status-card.good{border-color:#9edec7;background:#effbf6}
+    .status-card.bad{border-color:#f0b3c1;background:#fff3f6}
+    .status-title{font-weight:900;margin-bottom:5px}
+    .status-text{color:#555873;line-height:1.45}
+
+    .vars{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .var-chip{
+      background:#f1efff;
+      border:1px solid #ddd9ff;
+      border-radius:10px;
+      padding:7px 9px;
+      font-size:.85rem;
+    }
+    .var-chip b{color:#4a4ea2}
+
+    .console{
+      background:#151724;
+      color:#dfe2f7;
+      border-radius:14px;
+      padding:12px;
+      overflow:auto;
+      min-height:220px;
+      max-height:42vh;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      font-size:.85rem;
+      line-height:1.5;
+    }
+    .log-row{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+    .log-row:last-child{border-bottom:none}
+    .log-step{color:#8a92b7}
+    .log-good{color:#99e7bd}
+    .log-bad{color:#ff9db2}
+
+    .controls{
+      margin-top:14px;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .btn{
+      border:none;
+      border-radius:12px;
+      padding:10px 13px;
+      font-weight:900;
+      background:#eceafb;
+      color:#36396f;
+      box-shadow:0 3px 7px rgba(30,33,65,.08);
+    }
+    .btn.primary{background:var(--primary);color:white}
+    .btn.warn{background:#fff0d7;color:#805310}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .range-wrap{display:flex;align-items:center;gap:8px;padding:7px 10px;color:var(--muted);font-size:.83rem}
+    input[type="range"]{width:110px}
+
+    .splash{
+      position:fixed;inset:0;z-index:200;
+      background:linear-gradient(135deg,#252a5c,#5b5fc7 62%,#8b8ff4);
+      color:white;
+      display:grid;place-items:center;
+      padding:20px;
+    }
+    .splash-card{
+      width:min(700px,100%);
+      background:rgba(255,255,255,.11);
+      border:1px solid rgba(255,255,255,.25);
+      border-radius:28px;
+      padding:28px;
+      box-shadow:0 24px 70px rgba(0,0,0,.22);
+      backdrop-filter:blur(8px);
+    }
+    .splash h1{font-size:clamp(2rem,7vw,4.3rem);line-height:.94;margin:0 0 16px}
+    .splash p{font-size:1.05rem;line-height:1.55;opacity:.95}
+    .ada-tag{
+      display:inline-block;
+      background:#ffca7a;color:#3a2a10;
+      padding:6px 10px;border-radius:999px;font-weight:900;margin-bottom:14px;
+    }
+    .start-btn{
+      margin-top:12px;
+      border:0;border-radius:14px;padding:13px 18px;
+      background:white;color:#373b7a;font-weight:900;font-size:1.02rem;
+    }
+
+    .shake{animation:shake .35s linear}
+    @keyframes shake{
+      0%,100%{transform:translateX(0)}
+      25%{transform:translateX(-5px)}
+      75%{transform:translateX(5px)}
+    }
+
+    @media (max-width:980px){
+      .grid{grid-template-columns:1fr}
+      .panel{min-height:auto}
+      .code-wrap{min-height:310px;max-height:none}
+      .console{max-height:none}
+      .topbar{position:static}
+    }
+
+    @media (max-width:560px){
+      .app{padding:9px}
+      .hero{padding:15px}
+      .panel-body{padding:10px}
+      .topbar{padding:10px}
+      .phase-picker{width:100%}
+      .phase-picker select{flex:1;min-width:0}
+      .controls .btn{flex:1 1 calc(50% - 8px)}
+      .range-wrap{width:100%;justify-content:space-between}
+      .range-wrap input{flex:1}
+    }
+  </style>
+</head>
+<body>
+  <div id="splash" class="splash">
+    <div class="splash-card">
+      <div class="ada-tag">Feira de Ciências • Turma 903</div>
+      <h1>A evolução do algoritmo</h1>
+      <p><strong>Ada Lovelace</strong> descreveu, no século XIX, um método detalhado para a Máquina Analítica de Charles Babbage. Hoje chamaríamos esse tipo de sequência de instruções de <strong>algoritmo</strong>.</p>
+      <p>Neste jogo, você organiza instruções, vê o JavaScript nascer em tempo real e observa a máquina executar exatamente o que recebeu — inclusive quando o algoritmo está errado.</p>
+      <button id="startBtn" class="start-btn">Começar o desafio →</button>
+    </div>
+  </div>
+
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-badge">A→</div>
+        <div>
+          <div class="brand-title">Encontre o erro no algoritmo</div>
+          <div class="brand-sub">Ada Lovelace • JavaScript • execução passo a passo</div>
+        </div>
+      </div>
+
+      <div class="phase-picker">
+        <label for="phaseSelect"><strong>Fase</strong></label>
+        <select id="phaseSelect" aria-label="Selecionar fase"></select>
+      </div>
+
+      <div id="score" class="score">0/8 concluídas</div>
+    </header>
+
+    <section class="hero">
+      <h1 id="phaseTitle">Fase</h1>
+      <p id="phaseIntro"></p>
+      <div class="objective"><strong>Objetivo:</strong> <span id="phaseObjective"></span></div>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>1) BLOCOS</h2>
+            <small>Arraste para montar o algoritmo</small>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="drop-title"><span>Algoritmo</span><span id="blockCount"></span></div>
+          <div id="activeList" class="block-list" data-zone="active" aria-label="Blocos ativos do algoritmo"></div>
+
+          <div id="unusedSection">
+            <div class="drop-title" style="margin-top:14px"><span>Não usar</span><span>opcional</span></div>
+            <div id="unusedList" class="block-list unused-list" data-zone="unused" aria-label="Blocos que não serão usados"></div>
+          </div>
+
+          <div id="hintBox" class="tip hidden"></div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>2) CÓDIGO</h2>
+            <small>JavaScript equivalente, gerado ao vivo</small>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div id="codeWrap" class="code-wrap" aria-live="polite"></div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>3) RESULTADO / MÁQUINA</h2>
+            <small>Executa exatamente a ordem recebida</small>
+          </div>
+        </div>
+        <div class="panel-body machine">
+          <div id="statusCard" class="status-card">
+            <div id="statusTitle" class="status-title">Pronta para executar</div>
+            <div id="statusText" class="status-text">Organize os blocos e toque em “Testar”.</div>
+          </div>
+
+          <div>
+            <strong style="font-size:.86rem">Variáveis agora:</strong>
+            <div id="vars" class="vars" style="margin-top:7px"></div>
+          </div>
+
+          <div id="console" class="console" aria-live="polite">
+            <div class="log-row"><span class="log-step">›</span> A máquina está esperando instruções.</div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <div class="controls">
+      <button id="testBtn" class="btn primary">▶ Testar</button>
+      <button id="hintBtn" class="btn warn">💡 Dica</button>
+      <button id="resetBtn" class="btn">↺ Reiniciar fase</button>
+      <div class="range-wrap">
+        <span>Velocidade</span>
+        <input id="speed" type="range" min="120" max="1200" step="60" value="650" />
+      </div>
+    </div>
+  </main>
+
+<script>
+(() => {
+  "use strict";
+
+  const phases = [
+    {
+      id: "dobro10",
+      title: "Fase 1 — Dobro + 10",
+      intro: "A ordem muda o resultado. Primeiro crie o número, depois transforme-o.",
+      objective: "Escolher o número 7, calcular o dobro, somar 10 e mostrar o resultado.",
+      hint: "Uma operação só pode usar uma variável depois que ela existe.",
+      blocks: [
+        {id:"show", label:"Mostrar resultado", cmd:"SHOW_X"},
+        {id:"add10", label:"Somar 10", cmd:"ADD_X", value:10},
+        {id:"choose", label:"Escolher número 7", cmd:"SET_X", value:7},
+        {id:"double", label:"Multiplicar por 2", cmd:"MUL_X", value:2}
+      ],
+      correct:["choose","double","add10","show"],
+      expected:24,
+      success:"Perfeito: 7 × 2 = 14; depois 14 + 10 = 24.",
+      commonError:"Se “Somar 10” ou “Multiplicar” vier antes de criar o número, a variável ainda não tem um valor útil. A máquina não adivinha a intenção."
+    },
+    {
+      id:"sanduiche",
+      title:"Fase 2 — Robô faz um sanduíche",
+      intro:"Algoritmos também servem para tarefas do cotidiano: instruções vagas ou fora de ordem confundem uma máquina.",
+      objective:"Fazer o robô montar um sanduíche simples e só então servir.",
+      hint:"O robô precisa abrir o pão antes de colocar o recheio, e fechar antes de servir.",
+      blocks:[
+        {id:"serve",label:"Servir o sanduíche",cmd:"SANDWICH_SERVE"},
+        {id:"fill",label:"Colocar queijo",cmd:"SANDWICH_FILL"},
+        {id:"open",label:"Abrir o pão",cmd:"SANDWICH_OPEN"},
+        {id:"close",label:"Fechar o sanduíche",cmd:"SANDWICH_CLOSE"}
+      ],
+      correct:["open","fill","close","serve"],
+      expected:"servido",
+      success:"O robô recebeu uma sequência precisa e conseguiu concluir a tarefa.",
+      commonError:"Servir antes de fechar ou colocar queijo antes de abrir o pão mostra por que instruções precisam ser precisas e ordenadas."
+    },
+    {
+      id:"media",
+      title:"Fase 3 — Média de duas notas",
+      intro:"Agora entram duas variáveis e uma expressão matemática.",
+      objective:"Guardar as notas 8 e 6, calcular a média e mostrar 7.",
+      hint:"As duas notas precisam existir antes de calcular (nota1 + nota2) / 2.",
+      blocks:[
+        {id:"calc",label:"Calcular média",cmd:"CALC_AVG"},
+        {id:"n1",label:"Definir nota1 = 8",cmd:"SET_VAR",name:"nota1",value:8},
+        {id:"show",label:"Mostrar média",cmd:"SHOW_VAR",name:"media"},
+        {id:"n2",label:"Definir nota2 = 6",cmd:"SET_VAR",name:"nota2",value:6}
+      ],
+      correct:["n1","n2","calc","show"],
+      expected:7,
+      success:"Certo: (8 + 6) / 2 = 7.",
+      commonError:"Calcular a média antes de definir as duas notas produz um valor inválido. Em programação, dados precisam estar disponíveis antes do cálculo."
+    },
+    {
+      id:"distrator",
+      title:"Fase 4 — Cuidado com o bloco distrator",
+      intro:"Nem toda instrução disponível deve entrar no algoritmo.",
+      objective:"Começar em 5, somar 3, multiplicar por 2 e mostrar 16. O bloco “Subtrair 100” não deve ser usado.",
+      hint:"Arraste a instrução que atrapalha para a área “Não usar”.",
+      blocks:[
+        {id:"show",label:"Mostrar resultado",cmd:"SHOW_X"},
+        {id:"bad",label:"Subtrair 100",cmd:"ADD_X",value:-100,distractor:true},
+        {id:"mul",label:"Multiplicar por 2",cmd:"MUL_X",value:2},
+        {id:"set",label:"Definir número = 5",cmd:"SET_X",value:5},
+        {id:"add",label:"Somar 3",cmd:"ADD_X",value:3}
+      ],
+      correct:["set","add","mul","show"],
+      unused:["bad"],
+      expected:16,
+      success:"Boa depuração: você não só ordenou o algoritmo, como removeu uma instrução incorreta.",
+      commonError:"Um programa pode estar com a ordem quase certa e ainda falhar por causa de uma instrução extra. Depurar também é descobrir o que não deveria estar ali."
+    },
+    {
+      id:"paridade",
+      title:"Fase 5 — Se / senão",
+      intro:"Programas podem tomar caminhos diferentes dependendo de uma condição.",
+      objective:"Definir n = 7 e mostrar “ímpar” usando uma decisão se/senão.",
+      hint:"A condição vem depois do valor. O bloco SENÃO separa os dois caminhos e FIM encerra a decisão.",
+      blocks:[
+        {id:"odd",label:"Mostrar “ímpar”",cmd:"PRINT_TEXT",text:"ímpar"},
+        {id:"endif",label:"Fim do se",cmd:"ENDIF"},
+        {id:"set",label:"Definir n = 7",cmd:"SET_VAR",name:"n",value:7},
+        {id:"if",label:"Se n for par",cmd:"IF_EVEN",name:"n"},
+        {id:"else",label:"Senão",cmd:"ELSE"},
+        {id:"even",label:"Mostrar “par”",cmd:"PRINT_TEXT",text:"par"}
+      ],
+      correct:["set","if","even","else","odd","endif"],
+      expected:"ímpar",
+      success:"Como 7 não é divisível por 2, a máquina pulou o caminho “par” e executou o caminho do SENÃO.",
+      commonError:"Trocar os blocos de PAR e ÍMPAR faz a lógica dizer o contrário. Em estruturas condicionais, cada ação precisa ficar no ramo correto."
+    },
+    {
+      id:"repeticao",
+      title:"Fase 6 — Repita 3 vezes",
+      intro:"Laços evitam escrever a mesma instrução várias vezes.",
+      objective:"Começar com total = 0, somar 2 três vezes e mostrar 6.",
+      hint:"O que deve repetir fica entre “Repita 3 vezes” e “Fim da repetição”.",
+      blocks:[
+        {id:"show",label:"Mostrar total",cmd:"SHOW_VAR",name:"total"},
+        {id:"end",label:"Fim da repetição",cmd:"REPEAT_END"},
+        {id:"add",label:"Somar 2 ao total",cmd:"ADD_VAR",name:"total",value:2},
+        {id:"set",label:"Definir total = 0",cmd:"SET_VAR",name:"total",value:0},
+        {id:"start",label:"Repita 3 vezes",cmd:"REPEAT_START",times:3}
+      ],
+      correct:["set","start","add","end","show"],
+      expected:6,
+      success:"O mesmo bloco foi executado três vezes: 0 → 2 → 4 → 6.",
+      commonError:"Se o “Mostrar total” ficar dentro do laço, ele aparece três vezes. Se a soma ficar fora, ela acontece apenas uma."
+    },
+    {
+      id:"troca",
+      title:"Fase 7 — Troca de variáveis",
+      intro:"Variáveis guardam valores. Se você sobrescrever cedo demais, pode perder uma informação.",
+      objective:"Começar com a = 5 e b = 2, trocar os valores usando uma variável temporária e mostrar a = 2 e b = 5.",
+      hint:"Antes de substituir a, guarde seu valor original em temp.",
+      blocks:[
+        {id:"setb",label:"Definir b = 2",cmd:"SET_VAR",name:"b",value:2},
+        {id:"a_from_b",label:"a recebe b",cmd:"COPY_VAR",to:"a",from:"b"},
+        {id:"show",label:"Mostrar a e b",cmd:"SHOW_PAIR",a:"a",b:"b"},
+        {id:"temp",label:"temp recebe a",cmd:"COPY_VAR",to:"temp",from:"a"},
+        {id:"seta",label:"Definir a = 5",cmd:"SET_VAR",name:"a",value:5},
+        {id:"b_from_temp",label:"b recebe temp",cmd:"COPY_VAR",to:"b",from:"temp"}
+      ],
+      correct:["seta","setb","temp","a_from_b","b_from_temp","show"],
+      expected:"2,5",
+      success:"Você preservou o valor antigo de a em temp antes de sobrescrevê-lo.",
+      commonError:"Fazer “a recebe b” antes de salvar a destrói o 5 original. Esse é um exemplo clássico de bug por sobrescrita de variável."
+    },
+    {
+      id:"ada",
+      title:"Fase 8 — Nota G de Ada Lovelace",
+      intro:"Inspirada na famosa Nota G de Ada Lovelace, esta fase usa valores intermediários para chegar a um número de Bernoulli.",
+      objective:"Calcular B₂ = 1/6 a partir de B₀ = 1 e B₁ = −1/2, usando uma forma simplificada da recorrência.",
+      hint:"Primeiro defina B0 e B1. Depois calcule a soma intermediária e só então B2.",
+      blocks:[
+        {id:"b2",label:"Calcular B2 = -soma / 3",cmd:"ADA_B2"},
+        {id:"show",label:"Mostrar B2",cmd:"SHOW_VAR",name:"B2"},
+        {id:"b0",label:"Definir B0 = 1",cmd:"SET_VAR",name:"B0",value:1},
+        {id:"sum",label:"Calcular soma = B0 + 3×B1",cmd:"ADA_SUM"},
+        {id:"b1",label:"Definir B1 = -1/2",cmd:"SET_VAR",name:"B1",value:-0.5}
+      ],
+      correct:["b0","b1","sum","b2","show"],
+      expected:1/6,
+      success:"Resultado: B₂ = 1/6. A ideia central é muito “Ada”: decompor um cálculo em passos e valores intermediários executáveis por uma máquina.",
+      commonError:"Tentar calcular B2 antes da soma intermediária é como pedir à máquina uma etapa que depende de um resultado que ainda não existe."
+    }
+  ];
+
+  const els = {
+    splash: document.getElementById("splash"),
+    startBtn: document.getElementById("startBtn"),
+    phaseSelect: document.getElementById("phaseSelect"),
+    score: document.getElementById("score"),
+    phaseTitle: document.getElementById("phaseTitle"),
+    phaseIntro: document.getElementById("phaseIntro"),
+    phaseObjective: document.getElementById("phaseObjective"),
+    activeList: document.getElementById("activeList"),
+    unusedList: document.getElementById("unusedList"),
+    unusedSection: document.getElementById("unusedSection"),
+    blockCount: document.getElementById("blockCount"),
+    hintBox: document.getElementById("hintBox"),
+    codeWrap: document.getElementById("codeWrap"),
+    statusCard: document.getElementById("statusCard"),
+    statusTitle: document.getElementById("statusTitle"),
+    statusText: document.getElementById("statusText"),
+    vars: document.getElementById("vars"),
+    console: document.getElementById("console"),
+    testBtn: document.getElementById("testBtn"),
+    hintBtn: document.getElementById("hintBtn"),
+    resetBtn: document.getElementById("resetBtn"),
+    speed: document.getElementById("speed")
+  };
+
+  let current = 0;
+  let running = false;
+  let state = {};
+  let shownValues = [];
+  let completed = new Set(JSON.parse(localStorage.getItem("algoritmo903-completed") || "[]"));
+  let drag = null;
+
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  }
+
+  function fmt(v){
+    if (v === undefined) return "indefinido";
+    if (Number.isNaN(v)) return "NaN";
+    if (typeof v === "number" && Math.abs(v - 1/6) < 1e-10) return "0,1666… (1/6)";
+    if (typeof v === "number") return String(Number(v.toFixed(6))).replace(".",",");
+    return String(v);
+  }
+
+  function blockById(id){
+    return phases[current].blocks.find(b => b.id === id);
+  }
+
+  function syntax(line){
+    let s = esc(line);
+    s = s.replace(/(\/\/.*)$/g,'<span class="com">$1</span>');
+    s = s.replace(/(&quot;.*?&quot;|'.*?')/g,'<span class="str">$1</span>');
+    s = s.replace(/\b(let|const|if|else|for|of)\b/g,'<span class="kw">$1</span>');
+    s = s.replace(/\b(console\.log)\b/g,'<span class="fn">$1</span>');
+    s = s.replace(/\b(-?\d+(?:\.\d+)?)\b/g,'<span class="numlit">$1</span>');
+    return s;
+  }
+
+  function codeForBlock(b){
+    switch(b.cmd){
+      case "SET_X": return `let x = ${b.value};`;
+      case "ADD_X": return `x = x + (${b.value});`;
+      case "MUL_X": return `x = x * ${b.value};`;
+      case "SHOW_X": return `console.log(x);`;
+      case "SET_VAR": return `let ${b.name} = ${b.value};`;
+      case "CALC_AVG": return `let media = (nota1 + nota2) / 2;`;
+      case "SHOW_VAR": return `console.log(${b.name});`;
+      case "SANDWICH_OPEN": return `robo.abrirPao();`;
+      case "SANDWICH_FILL": return `robo.colocarQueijo();`;
+      case "SANDWICH_CLOSE": return `robo.fecharSanduiche();`;
+      case "SANDWICH_SERVE": return `robo.servir();`;
+      case "IF_EVEN": return `if (${b.name} % 2 === 0) {`;
+      case "ELSE": return `} else {`;
+      case "ENDIF": return `}`;
+      case "PRINT_TEXT": return `console.log("${b.text}");`;
+      case "REPEAT_START": return `for (let i = 0; i < ${b.times}; i++) {`;
+      case "ADD_VAR": return `${b.name} = ${b.name} + ${b.value};`;
+      case "REPEAT_END": return `}`;
+      case "COPY_VAR": return `${b.to} = ${b.from};`;
+      case "SHOW_PAIR": return `console.log(${b.a}, ${b.b});`;
+      case "ADA_SUM": return `let soma = B0 + 3 * B1;`;
+      case "ADA_B2": return `let B2 = -soma / 3;`;
+      default: return `// instrução`;
+    }
+  }
+
+  function activeBlocks(){
+    return [...els.activeList.querySelectorAll(".block")].map(el => blockById(el.dataset.id));
+  }
+
+  function unusedIds(){
+    return [...els.unusedList.querySelectorAll(".block")].map(el => el.dataset.id);
+  }
+
+  function renderCode(){
+    const blocks = activeBlocks();
+    els.codeWrap.innerHTML = blocks.map((b,i) => `
+      <div class="code-line" data-code-id="${esc(b.id)}">
+        <div class="line-no">${i+1}</div>
+        <code>${syntax(codeForBlock(b))}</code>
+      </div>`).join("") || `<div class="code-line"><div class="line-no">1</div><code><span class="com">// arraste blocos para cá</span></code></div>`;
+    els.blockCount.textContent = `${blocks.length} bloco${blocks.length===1?"":"s"}`;
+  }
+
+  function makeBlock(b, index){
+    const el = document.createElement("div");
+    el.className = "block";
+    el.dataset.id = b.id;
+    el.setAttribute("role","button");
+    el.setAttribute("tabindex","0");
+    el.innerHTML = `
+      <span class="num">${index+1}</span>
+      <div><div class="label">${esc(b.label)}</div>
+      <div class="mini">${esc(codeForBlock(b))}</div></div>`;
+    el.addEventListener("pointerdown", pointerDown);
+    return el;
+  }
+
+  function refreshBlockNumbers(){
+    [...document.querySelectorAll(".block-list")].forEach(list => {
+      [...list.querySelectorAll(".block")].forEach((b,i) => {
+        const n = b.querySelector(".num");
+        if(n) n.textContent = i+1;
+      });
+    });
+  }
+
+  function renderPhase(){
+    running = false;
+    const p = phases[current];
+    els.phaseTitle.textContent = p.title;
+    els.phaseIntro.textContent = p.intro;
+    els.phaseObjective.textContent = p.objective;
+    els.hintBox.textContent = "💡 " + p.hint;
+    els.hintBox.classList.add("hidden");
+    els.unusedSection.classList.toggle("hidden", !p.unused);
+    els.activeList.innerHTML = "";
+    els.unusedList.innerHTML = "";
+
+    p.blocks.forEach((b,i) => els.activeList.appendChild(makeBlock(b,i)));
+    if(!p.unused){
+      els.unusedList.innerHTML = `<div class="empty-note">Esta fase usa todos os blocos.</div>`;
+    } else {
+      els.unusedList.innerHTML = `<div class="empty-note">Arraste para cá a instrução que não pertence ao algoritmo.</div>`;
+    }
+
+    state = {};
+    shownValues = [];
+    renderVars();
+    setStatus("Pronta para executar","Organize os blocos e toque em “Testar”.","");
+    els.console.innerHTML = `<div class="log-row"><span class="log-step">›</span> A máquina está esperando instruções.</div>`;
+    renderCode();
+    refreshBlockNumbers();
+    updateScore();
+  }
+
+  function updateScore(){
+    els.score.textContent = `${completed.size}/${phases.length} concluídas`;
+  }
+
+  function saveCompleted(){
+    localStorage.setItem("algoritmo903-completed", JSON.stringify([...completed]));
+    updateScore();
+  }
+
+  function setStatus(title,text,kind){
+    els.statusCard.className = "status-card" + (kind ? " "+kind : "");
+    els.statusTitle.textContent = title;
+    els.statusText.textContent = text;
+  }
+
+  function log(msg,kind=""){
+    const row = document.createElement("div");
+    row.className = "log-row" + (kind ? " "+kind : "");
+    row.innerHTML = `<span class="log-step">›</span> ${esc(msg)}`;
+    els.console.appendChild(row);
+    els.console.scrollTop = els.console.scrollHeight;
+  }
+
+  function renderVars(){
+    const keys = Object.keys(state).filter(k => !k.startsWith("__"));
+    els.vars.innerHTML = keys.length
+      ? keys.map(k => `<div class="var-chip"><b>${esc(k)}</b> = ${esc(fmt(state[k]))}</div>`).join("")
+      : `<div class="var-chip">nenhuma variável ainda</div>`;
+  }
+
+  function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+  function highlight(id){
+    document.querySelectorAll(".code-line").forEach(el => el.classList.remove("current"));
+    const line = els.codeWrap.querySelector(`[data-code-id="${CSS.escape(id)}"]`);
+    if(line){
+      line.classList.add("current");
+      line.scrollIntoView({block:"nearest",behavior:"smooth"});
+    }
+  }
+
+  function findForward(blocks, from, cmd){
+    for(let i=from+1;i<blocks.length;i++) if(blocks[i].cmd===cmd) return i;
+    return -1;
+  }
+
+  async function execute(){
+    if(running) return;
+    running = true;
+    els.testBtn.disabled = true;
+    els.resetBtn.disabled = true;
+    els.phaseSelect.disabled = true;
+
+    const p = phases[current];
+    const blocks = activeBlocks();
+    state = {};
+    shownValues = [];
+    renderVars();
+    els.console.innerHTML = "";
+    setStatus("Executando…","Observe cada instrução e o valor das variáveis.","");
+    log("Programa iniciado.");
+
+    let pc = 0;
+    let steps = 0;
+    const loops = [];
+    const ifMemory = [];
+
+    try{
+      while(pc < blocks.length){
+        if(++steps > 200) throw new Error("A execução passou do limite de segurança.");
+        const b = blocks[pc];
+        highlight(b.id);
+        log(`Linha ${pc+1}: ${b.label}`);
+        await wait(Number(els.speed.value));
+
+        switch(b.cmd){
+          case "SET_X":
+            state.x = b.value;
+            break;
+          case "ADD_X":
+            state.x = Number(state.x) + b.value;
+            break;
+          case "MUL_X":
+            state.x = Number(state.x) * b.value;
+            break;
+          case "SHOW_X":
+            shownValues.push(state.x);
+            log(`Saída: ${fmt(state.x)}`);
+            break;
+          case "SET_VAR":
+            state[b.name] = b.value;
+            break;
+          case "ADD_VAR":
+            state[b.name] = Number(state[b.name]) + b.value;
+            break;
+          case "CALC_AVG":
+            state.media = (Number(state.nota1) + Number(state.nota2)) / 2;
+            break;
+          case "SHOW_VAR":
+            shownValues.push(state[b.name]);
+            log(`Saída: ${fmt(state[b.name])}`);
+            break;
+
+          case "SANDWICH_OPEN":
+            state.aberto = true;
+            state.fechado = false;
+            state.erroSanduiche = false;
+            log("Robô: pão aberto.");
+            break;
+          case "SANDWICH_FILL":
+            if(!state.aberto || state.fechado){
+              state.erroSanduiche = true;
+              log("Robô tentou colocar queijo sem o pão estar aberto.","log-bad");
+            } else {
+              state.queijo = true;
+              log("Robô: queijo colocado.");
+            }
+            break;
+          case "SANDWICH_CLOSE":
+            if(!state.aberto || !state.queijo){
+              state.erroSanduiche = true;
+              log("Robô tentou fechar antes de montar corretamente.","log-bad");
+            } else {
+              state.fechado = true;
+              log("Robô: sanduíche fechado.");
+            }
+            break;
+          case "SANDWICH_SERVE":
+            state.resultado = (!state.erroSanduiche && state.fechado && state.queijo) ? "servido" : "falhou";
+            shownValues.push(state.resultado);
+            log(`Robô: ${state.resultado === "servido" ? "sanduíche servido!" : "não conseguiu servir corretamente."}`);
+            break;
+
+          case "IF_EVEN": {
+            const cond = Number(state[b.name]) % 2 === 0;
+            ifMemory.push(cond);
+            log(`Condição: ${b.name} é par? ${cond ? "sim" : "não"}.`);
+            if(!cond){
+              const elseAt = findForward(blocks, pc, "ELSE");
+              const endAt = findForward(blocks, pc, "ENDIF");
+              if(elseAt !== -1 && (endAt === -1 || elseAt < endAt)){
+                pc = elseAt;
+              }else if(endAt !== -1){
+                pc = endAt;
+              }
+            }
+            break;
+          }
+          case "ELSE": {
+            const cond = ifMemory[ifMemory.length-1];
+            if(cond){
+              const endAt = findForward(blocks, pc, "ENDIF");
+              if(endAt !== -1) pc = endAt;
+            }
+            break;
+          }
+          case "ENDIF":
+            ifMemory.pop();
+            break;
+          case "PRINT_TEXT":
+            shownValues.push(b.text);
+            log(`Saída: ${b.text}`);
+            break;
+
+          case "REPEAT_START":
+            loops.push({start:pc+1,end:findForward(blocks,pc,"REPEAT_END"),remaining:b.times});
+            log(`Laço iniciado: ${b.times} repetições.`);
+            break;
+          case "REPEAT_END": {
+            const loop = loops[loops.length-1];
+            if(loop && loop.end === pc){
+              loop.remaining--;
+              if(loop.remaining > 0){
+                log(`Voltando ao início do laço. Faltam ${loop.remaining} repetição(ões).`);
+                pc = loop.start - 1;
+              }else{
+                loops.pop();
+                log("Laço concluído.");
+              }
+            }
+            break;
+          }
+
+          case "COPY_VAR":
+            state[b.to] = state[b.from];
+            break;
+          case "SHOW_PAIR":
+            shownValues.push(`${state[b.a]},${state[b.b]}`);
+            log(`Saída: a = ${fmt(state[b.a])}, b = ${fmt(state[b.b])}`);
+            break;
+
+          case "ADA_SUM":
+            state.soma = Number(state.B0) + 3 * Number(state.B1);
+            break;
+          case "ADA_B2":
+            state.B2 = -Number(state.soma) / 3;
+            break;
+        }
+
+        renderVars();
+        await wait(Math.max(80, Number(els.speed.value)*0.35));
+        pc++;
+      }
+
+      document.querySelectorAll(".code-line").forEach(el => el.classList.remove("current"));
+      evaluateResult();
+    }catch(err){
+      setStatus("A máquina encontrou um problema", err.message, "bad");
+      log("Erro de execução: " + err.message, "log-bad");
+    }finally{
+      running = false;
+      els.testBtn.disabled = false;
+      els.resetBtn.disabled = false;
+      els.phaseSelect.disabled = false;
+    }
+  }
+
+  function normalizedEqual(a,b){
+    if(typeof a === "number" && typeof b === "number"){
+      return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a-b) < 1e-9;
+    }
+    return a === b;
+  }
+
+  function evaluateResult(){
+    const p = phases[current];
+    const ids = activeBlocks().map(b=>b.id);
+    const canonicalOrder = JSON.stringify(ids) === JSON.stringify(p.correct);
+    const correctUnused = !p.unused || JSON.stringify(unusedIds().sort()) === JSON.stringify([...p.unused].sort());
+    const last = shownValues[shownValues.length-1];
+
+    let semanticOK = normalizedEqual(last,p.expected);
+    if(p.id === "sanduiche") semanticOK = state.resultado === "servido";
+    if(p.id === "troca") semanticOK = last === "2,5";
+
+    // O resultado é validado pelo comportamento real da máquina.
+    // A ordem canônica continua documentada, mas ordens equivalentes também são aceitas.
+    if(correctUnused && semanticOK){
+      setStatus("✅ Acertou!",p.success,"good");
+      log("Resultado correto. Algoritmo concluído!","log-good");
+      completed.add(p.id);
+      saveCompleted();
+    }else{
+      let natural = "";
+      if(shownValues.length){
+        natural = ` A saída obtida foi: ${fmt(last)}.`;
+      }else{
+        natural = " Nenhum resultado final válido foi mostrado.";
+      }
+      setStatus("🔎 Ainda há um bug", p.commonError + natural, "bad");
+      log("O programa terminou, mas não atingiu o objetivo da fase.","log-bad");
+      els.statusCard.classList.remove("shake");
+      requestAnimationFrame(()=>els.statusCard.classList.add("shake"));
+    }
+  }
+
+  function pointerDown(ev){
+    if(running || ev.button > 0) return;
+    const item = ev.currentTarget;
+    ev.preventDefault();
+
+    const rect = item.getBoundingClientRect();
+    const ghost = item.cloneNode(true);
+    ghost.classList.add("ghost");
+    ghost.style.left = `${rect.left}px`;
+    ghost.style.top = `${rect.top}px`;
+    document.body.appendChild(ghost);
+
+    const placeholder = document.createElement("div");
+    placeholder.className = "placeholder";
+    placeholder.style.height = `${rect.height}px`;
+    item.parentElement.insertBefore(placeholder,item);
+    item.classList.add("dragging");
+
+    drag = {
+      item, ghost, placeholder,
+      offsetX: ev.clientX - rect.left,
+      offsetY: ev.clientY - rect.top,
+      pointerId: ev.pointerId
+    };
+
+    item.setPointerCapture?.(ev.pointerId);
+    window.addEventListener("pointermove", pointerMove, {passive:false});
+    window.addEventListener("pointerup", pointerUp, {passive:false});
+    window.addEventListener("pointercancel", pointerUp, {passive:false});
+  }
+
+  function pointerMove(ev){
+    if(!drag || ev.pointerId !== drag.pointerId) return;
+    ev.preventDefault();
+
+    drag.ghost.style.left = `${ev.clientX - drag.offsetX}px`;
+    drag.ghost.style.top = `${ev.clientY - drag.offsetY}px`;
+
+    const el = document.elementFromPoint(ev.clientX,ev.clientY);
+    const list = el?.closest(".block-list");
+    document.querySelectorAll(".block-list").forEach(x=>x.classList.remove("drag-over"));
+
+    if(list && !list.closest(".hidden")){
+      list.classList.add("drag-over");
+      const after = getAfterElement(list, ev.clientY);
+      if(after == null) list.appendChild(drag.placeholder);
+      else list.insertBefore(drag.placeholder, after);
+    }
+  }
+
+  function getAfterElement(container, y){
+    const items = [...container.querySelectorAll(".block:not(.dragging)")];
+    let closest = {offset:Number.NEGATIVE_INFINITY, element:null};
+    for(const child of items){
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height/2;
+      if(offset < 0 && offset > closest.offset){
+        closest = {offset, element:child};
+      }
+    }
+    return closest.element;
+  }
+
+  function pointerUp(ev){
+    if(!drag || ev.pointerId !== drag.pointerId) return;
+    ev.preventDefault();
+
+    drag.placeholder.parentElement?.insertBefore(drag.item, drag.placeholder);
+    drag.placeholder.remove();
+    drag.ghost.remove();
+    drag.item.classList.remove("dragging");
+    document.querySelectorAll(".block-list").forEach(x=>x.classList.remove("drag-over"));
+
+    drag = null;
+    window.removeEventListener("pointermove", pointerMove);
+    window.removeEventListener("pointerup", pointerUp);
+    window.removeEventListener("pointercancel", pointerUp);
+
+    cleanupEmptyNotes();
+    refreshBlockNumbers();
+    renderCode();
+    setStatus("Ordem alterada","O código ao lado já foi atualizado. Toque em “Testar” para executar.","");
+  }
+
+  function cleanupEmptyNotes(){
+    [els.activeList,els.unusedList].forEach(list => {
+      const note = list.querySelector(".empty-note");
+      if(note && list.querySelector(".block")) note.remove();
+    });
+    if(phases[current].unused && !els.unusedList.querySelector(".block") && !els.unusedList.querySelector(".empty-note")){
+      els.unusedList.innerHTML = `<div class="empty-note">Arraste para cá a instrução que não pertence ao algoritmo.</div>`;
+    }
+  }
+
+  phases.forEach((p,i)=>{
+    const op = document.createElement("option");
+    op.value = i;
+    op.textContent = p.title.replace(/^Fase \d+ — /,"");
+    els.phaseSelect.appendChild(op);
+  });
+
+  els.startBtn.addEventListener("click",()=>els.splash.classList.add("hidden"));
+  els.phaseSelect.addEventListener("change",e=>{current=Number(e.target.value);renderPhase();});
+  els.testBtn.addEventListener("click",execute);
+  els.hintBtn.addEventListener("click",()=>els.hintBox.classList.toggle("hidden"));
+  els.resetBtn.addEventListener("click",renderPhase);
+
+  renderPhase();
+})();
+</script>
+</body>
+</html>
